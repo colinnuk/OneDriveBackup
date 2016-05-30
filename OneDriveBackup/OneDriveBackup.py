@@ -37,15 +37,17 @@ def copy_folder(client, folder_id):
     except onedrivesdk.error.OneDriveError as e:
         if e.code == 'itemNotFound':
             # create the top level backup folder if it was not found - date level folders will be stored in here
-            new_folder = onedrivesdk.Folder()
             new_folder_item = onedrivesdk.Item()
             new_folder_item.name = folder_id
-            new_folder_item.folder = new_folder
+            new_folder_item.folder = onedrivesdk.Folder()
             top_level_backup_folder = client.item(drive='me', path='OneDriveBackup').children.add(new_folder_item)
 
-    logging.info('Start copy for folder id ' + folder_id + ' into folder id ' + top_level_backup_folder.id + ' as ' + time.strftime('%Y%m%d_%H%M', time.gmtime()))
-    #copy_operation = client.item(drive='me', id=folder_id).copy(name=time.strftime('%Y%m%d_%H%M', time.gmtime()), parent_reference=backup_folder).post()
-    #copy_operation._completed = True # Need to use this rather than _stop_poll_on_thread() until https://github.com/OneDrive/onedrive-sdk-python/pull/31 is merged
+    dated_backup_folder_name = time.strftime('%Y%m%d_%H%M', time.gmtime())
+    parent_ref = onedrivesdk.ItemReference()
+    parent_ref.id = top_level_backup_folder.id
+    logging.info('Start copy for folder id ' + folder_id + ' into folder id ' + top_level_backup_folder.id + ' as ' + dated_backup_folder_name)
+    copy_operation = client.item(drive='me', id=folder_id).copy(name=dated_backup_folder_name, parent_reference=parent_ref).post()
+    copy_operation._completed = True # Need to use this rather than _stop_poll_on_thread() until https://github.com/OneDrive/onedrive-sdk-python/pull/31 is merged
 
 def get_settings():
     settings = {}
