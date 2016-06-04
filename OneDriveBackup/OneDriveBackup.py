@@ -34,6 +34,13 @@ def copy_folder(client, folder_id):
     
     try:
         top_level_backup_folder = client.item(drive='me', path='OneDriveBackup/' + folder_id).get()
+        # if we have a corresponding top level folder then check when it was last backed up, if nothing has changed since the last backup then we just return
+        # top level folder is the ID of the real folder that is backed up, and it contains folders whose names are the delta tokens of the folder when the backup was created
+        most_recent_backup = client.item(drive='me', id=top_level_backup_folder.id).children.request(top=1, order_by='lastModifiedDateTime desc').get()
+        if most_recent_backup:
+            modified_items = client.item(drive='me', id=folder_id).delta(most_recent_backup[0].name).get()
+            if not modified_items:
+                return
     except onedrivesdk.error.OneDriveError as e:
         if e.code == 'itemNotFound':
             # create the top level backup folder if it was not found - date level folders will be stored in here
@@ -41,12 +48,16 @@ def copy_folder(client, folder_id):
             new_folder_item.name = folder_id
             new_folder_item.folder = onedrivesdk.Folder()
             top_level_backup_folder = client.item(drive='me', path='OneDriveBackup').children.add(new_folder_item)
+        else:
+            raise e
 
-    dated_backup_folder_name = time.strftime('%Y%m%d_%H%M', time.gmtime())
+    # get the last delta token to use as our folder name
+    #    this enumerates the current state of the folder with a token we can use to query OneDrive again to see if any files have been modified
+    delta_token = client.item(drive='me', id=folder_id).delta('latest').get()
     parent_ref = onedrivesdk.ItemReference()
     parent_ref.id = top_level_backup_folder.id
-    logging.info('Start copy for folder id ' + folder_id + ' into folder id ' + top_level_backup_folder.id + ' as ' + dated_backup_folder_name)
-    copy_operation = client.item(drive='me', id=folder_id).copy(name=dated_backup_folder_name, parent_reference=parent_ref).post()
+    logging.info('Copy folder id ' + folder_id + ' into folder id ' + top_level_backup_folder.id + ' as ' + delta_token.token)
+    copy_operation = client.item(drive='me', id=folder_id).copy(name=delta_token.token, parent_reference=parent_ref).post()
     copy_operation._completed = True # Need to use this rather than _stop_poll_on_thread() until https://github.com/OneDrive/onedrive-sdk-python/pull/31 is merged
 
 def get_settings():
