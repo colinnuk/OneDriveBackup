@@ -40,6 +40,7 @@ def copy_folder(client, folder_id):
         if most_recent_backup:
             modified_items = client.item(drive='me', id=folder_id).delta(most_recent_backup[0].name).get()
             if not modified_items:
+                logging.info('No modified items in ' + folder_id + ' - not backing this folder up')
                 return
     except onedrivesdk.error.OneDriveError as e:
         if e.code == 'itemNotFound':
@@ -51,7 +52,7 @@ def copy_folder(client, folder_id):
         else:
             raise e
 
-    # get the last delta token to use as our folder name
+    # get the latest delta token to use as our folder name
     #    this enumerates the current state of the folder with a token we can use to query OneDrive again to see if any files have been modified
     delta_token = client.item(drive='me', id=folder_id).delta('latest').get()
     parent_ref = onedrivesdk.ItemReference()
