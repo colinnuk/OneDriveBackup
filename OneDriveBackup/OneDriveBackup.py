@@ -107,10 +107,10 @@ def get_settings():
     return settings
 
 def setup(client):
-    # try and download our settings file /OneDriveBackup/settings to our app storage, if it doesn't exist then create and upload it
+    # try and download our settings file to our app storage, if it doesn't exist then create and upload it
     onedrivebackup_folder = client.item(drive='me', path='OneDriveBackup').children.get()
     for item in onedrivebackup_folder:
-        if item.name == 'settings':
+        if item.name == 'settings.txt':
             client.item(drive='me', id=item.id).download(get_settings_path())
 
     if not os.path.isfile(get_settings_path()):
@@ -131,7 +131,7 @@ def edit_settings(client):
         if is_int(backups_to_keep) and int(backups_to_keep) != 0:
             settings.write('\nBackupsToKeep=' + backups_to_keep)
         settings.close()
-        uploaded_item = client.item(drive='me', path='OneDriveBackup').children['settings'].upload(get_settings_path())
+        uploaded_item = client.item(drive='me', path='OneDriveBackup').children['settings.txt'].upload(get_settings_path())
         logging.info('Updated & uploaded settings')
     
 
@@ -191,7 +191,7 @@ def get_session_path():
     return os.path.join(get_app_local_storage_path(), 'session')
 
 def get_settings_path():
-    return os.path.join(get_app_local_storage_path(), 'settings')
+    return os.path.join(get_app_local_storage_path(), 'settings.txt')
 
 def get_app_local_storage_path():
     if platform.system() == 'Windows':
