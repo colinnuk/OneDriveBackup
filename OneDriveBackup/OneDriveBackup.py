@@ -15,12 +15,35 @@ def main():
     
     client = auth()
 
-    setup(client)
-    settings = get_settings()
+    settings = setup(client)
+
+    # purge extra folders first - this is light work and OneDrive does this very quickly. Copying folders below takes ages!
+    purge_folders(client, settings)
 
     copy_folders(client, settings['BackupFolders'])
     
     sys.exit()
+
+def purge_folders(client, settings):
+    # this method will purge the oldest backups from each backup top level folder, so that the number of folders doesn't exceed BackupsToKeep
+    if 'BackupsToKeep' not in settings: 
+        return
+    split_folders = settings['BackupFolders'].split(',')
+    for folder_id in split_folders:
+        try:
+            top_level_backup_folder = client.item(drive='me', path='OneDriveBackup/' + folder_id).get()
+            backup_folders = client.item(drive='me', id=top_level_backup_folder.id).children.request(order_by='lastModifiedDateTime asc').get()
+            num_backups_to_delete = len(backup_folders) - int(settings['BackupsToKeep'])
+            if num_backups_to_delete < len(backup_folders):
+                for i, item in enumerate(backup_folders):
+                    if i < num_backups_to_delete:
+                        logging.info('Deleting backup for ' + folder_id + ', dated ' + item.created_date_time.strftime('%Y%m%d %H%M'))
+                        client.item(drive='me', id=item.id).delete()
+        except onedrivesdk.error.OneDriveError as e:
+            if e.code == 'itemNotFound':
+                logging.info('Top level folder for ' + folder_id + ' not found, so not purging backups')
+            else:
+                raise e
 
 def copy_folders(client, backup_folders):
     split_folders = backup_folders.split(',')
@@ -73,6 +96,12 @@ def get_settings():
         logging.critical('Invalid settings file; should contain "BackupFolders" key')
         sys.exit()
 
+    #if 'BackupsToKeep' is present, but not an integer, we need to quit
+    if 'BackupsToKeep' in settings:
+        if not is_int(settings['BackupsToKeep']):
+            logging.critical('Invalid settings file; "BackupsToKeep" is not an integer')
+            sys.exit()            
+
     return settings
 
 def setup(client):
@@ -85,6 +114,8 @@ def setup(client):
     if not os.path.isfile(get_settings_path()):
         edit_settings(client)
 
+    return get_settings()
+
 def edit_settings(client):
     with open(get_settings_path(), 'w') as settings:
         settings.write('BackupFolders=')
@@ -94,7 +125,9 @@ def edit_settings(client):
             if folder.name != 'OneDriveBackup' and input('Do you want to include folder "' + folder.name + '" in the backup? Yes=Y\t') == 'Y':
                 settings.write(folder.id + ',')
 
-        settings.write('\nBackupsToKeep=' + input('How many backups do you want to keep?\t'))
+        backups_to_keep = input('How many backups do you want to keep?\t')
+        if is_int(backups_to_keep) and int(backups_to_keep) != 0:
+            settings.write('\nBackupsToKeep=' + backups_to_keep)
         settings.close()
         uploaded_item = client.item(drive='me', path='OneDriveBackup').children['settings'].upload(get_settings_path())
         logging.info('Updated & uploaded settings')
