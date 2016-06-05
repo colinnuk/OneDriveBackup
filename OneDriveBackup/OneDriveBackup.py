@@ -30,6 +30,8 @@ def purge_folders(client, settings):
         return
     split_folders = settings['BackupFolders'].split(',')
     for folder_id in split_folders:
+        if folder_id == '':
+            continue
         try:
             top_level_backup_folder = client.item(drive='me', path='OneDriveBackup/' + folder_id).get()
             backup_folders = client.item(drive='me', id=top_level_backup_folder.id).children.request(order_by='lastModifiedDateTime asc').get()
