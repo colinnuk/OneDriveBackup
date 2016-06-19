@@ -74,7 +74,7 @@ def copy_folder(client, folder_id):
             new_folder_item.name = folder_id
             new_folder_item.folder = onedrivesdk.Folder()
             top_level_backup_folder = client.item(drive='me', path='OneDriveBackup').children.add(new_folder_item)
-        else:
+        elif e.code != 'resyncRequired': #if we get resyncRequired back, then assume there are modifications, so just copy again
             raise e
 
     # get the latest delta token to use as our folder name
