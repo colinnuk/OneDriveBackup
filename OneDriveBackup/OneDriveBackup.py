@@ -136,8 +136,8 @@ def edit_settings(client):
     
 
 def auth():
-    # get the client secret from our text file - register this https://dev.onedrive.com/app-registration.htm
-    client_id_secret_str = open('client_secret.txt').read()
+    # get the client secret from our text file which MUST be in same dir as this script - register this https://dev.onedrive.com/app-registration.htm
+    client_id_secret_str = open(os.path.dirname(os.path.realpath(sys.argv[0])) + '/client_secret.txt').read()
     client_id_secret = client_id_secret_str.split(':')
     if len(client_id_secret) != 2:
         logging.critical('client_secret.txt not found in this directory, or it\'s invalid. Form should be: client_id:client_secret')
